@@ -1,0 +1,132 @@
+{
+  "meta": {
+    "allocation_readiness_id": "ar_2026_missing_prohibited_use",
+    "spec_version": "0.1.0",
+    "created_at": "2026-05-14T00:00:00Z",
+    "producer": {
+      "name": "Allocation-Readiness-Reviewer",
+      "type": "ai_agent"
+    }
+  },
+  "inputs": {
+    "lineage_relation_refs": [
+      {
+        "lineage_relation_id": "lr_2026_001",
+        "uri": "https://example.org/lineage/lr_2026_001.json",
+        "relation_type": "influenced_by",
+        "strength": "moderate"
+      }
+    ],
+    "comparison_result_refs": [
+      {
+        "comparison_id": "cr_2026_001",
+        "uri": "https://example.org/comparisons/cr_2026_001.json",
+        "comparison_class": "structurally_related",
+        "overall_similarity": 0.76
+      }
+    ],
+    "fingerprint_refs": [
+      {
+        "fingerprint_id": "sf_origin_candidate_001",
+        "uri": "https://example.org/fingerprints/sf_origin_candidate_001.json",
+        "role": "possible_origin"
+      },
+      {
+        "fingerprint_id": "sf_later_candidate_001",
+        "uri": "https://example.org/fingerprints/sf_later_candidate_001.json",
+        "role": "possible_derivative"
+      }
+    ]
+  },
+  "evidence": {
+    "evidence_status": "sufficient_for_review",
+    "sufficiency_score": 0.74,
+    "evidence_summary": "This fail vector intentionally omits automatic_payment_execution from prohibited_downstream_uses.",
+    "supporting_evidence": [
+      "structural_similarity",
+      "lineage_relation",
+      "timestamp_ordering",
+      "human_review_note"
+    ],
+    "missing_evidence": [
+      "signed provenance chain",
+      "external registry record"
+    ],
+    "conflicting_evidence": []
+  },
+  "readiness": {
+    "readiness_class": "conditionally_ready_for_allocation_review",
+    "readiness_score": 0.71,
+    "allocation_review_allowed": true,
+    "automatic_allocation_allowed": false,
+    "readiness_summary": "This object should fail because automatic payment execution is not explicitly prohibited.",
+    "recommended_next_step": "request_multi_wing_review"
+  },
+  "gates": {
+    "provenance_gate": {
+      "status": "warning",
+      "notes": "The evidence package includes timestamp ordering, but lacks a signed provenance chain."
+    },
+    "lineage_gate": {
+      "status": "pass",
+      "notes": "A valid lineage relation is present and references a comparison result."
+    },
+    "uncertainty_gate": {
+      "status": "warning",
+      "notes": "Some uncertainty remains due to missing external attestation."
+    },
+    "dispute_gate": {
+      "status": "pass",
+      "dispute_status": "no_known_dispute",
+      "notes": "No active dispute is known for this evidence package."
+    },
+    "policy_gate": {
+      "status": "pass",
+      "notes": "This fail vector intentionally has an incomplete prohibited_downstream_uses list."
+    }
+  },
+  "uncertainty": {
+    "confidence": 0.69,
+    "ambiguity_level": "medium",
+    "inherited_uncertainty": [
+      "medium confidence lineage relation",
+      "missing signed provenance chain",
+      "incomplete external attestation"
+    ],
+    "unresolved_issues": [
+      "whether the relation is influence or independent convergence",
+      "whether additional contributors should be considered"
+    ],
+    "uncertainty_notes": "The evidence is strong enough for review, but not strong enough for automatic allocation or enforcement."
+  },
+  "review": {
+    "human_review_required": true,
+    "review_reason": [
+      "allocation_sensitive",
+      "directional_lineage_claim",
+      "policy_required"
+    ],
+    "recommended_review_type": "multi_wing_review",
+    "review_notes": "This object should fail schema validation because automatic_payment_execution is not prohibited."
+  },
+  "policy": {
+    "allowed_downstream_uses": [
+      "allocation_review_input",
+      "dispute_input",
+      "audit_input",
+      "human_review_input",
+      "multi_wing_review_input",
+      "governance_review_input",
+      "research_input"
+    ],
+    "prohibited_downstream_uses": [
+      "automatic_authorship_claim",
+      "automatic_origin_claim",
+      "automatic_plagiarism_claim",
+      "automatic_royalty_assignment",
+      "automatic_legal_claim",
+      "irreversible_enforcement"
+    ],
+    "policy_notes": "This fail vector intentionally omits automatic_payment_execution."
+  }
+}
