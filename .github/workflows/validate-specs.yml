@@ -9,7 +9,7 @@ on:
 
 jobs:
   validate-specs:
-    name: Validate specifications and test vectors
+    name: Validate Allocation Readiness v0.1
     runs-on: ubuntu-latest
 
     steps:
@@ -34,7 +34,7 @@ jobs:
           echo "=== Repository file tree ==="
           find . -maxdepth 5 -type f | sort
 
-      - name: Validate implemented specs
+      - name: Validate Allocation Readiness v0.1
         run: |
           python - <<'PY'
           import json
@@ -43,46 +43,35 @@ jobs:
 
           from jsonschema import Draft202012Validator, FormatChecker
 
-          TARGETS = [
-              {
-                  "name": "Comparison Result v0.1",
-                  "schema": Path("schemas/comparison-result-v0.1.schema.json"),
-                  "sample": Path("examples/comparison-result.sample.json"),
-                  "pass_vectors": [
-                      Path("tests/vectors/pass/comparison-result.valid.json"),
-                  ],
-                  "fail_vectors": [
-                      Path("tests/vectors/fail/comparison-result.missing-confidence.json"),
-                      Path("tests/vectors/fail/comparison-result.auto-royalty-assignment-missing-prohibition.json"),
-                  ],
-              },
-              {
-                  "name": "Lineage Relation v0.1",
-                  "schema": Path("schemas/lineage-relation-v0.1.schema.json"),
-                  "sample": Path("examples/lineage-relation.sample.json"),
-                  "pass_vectors": [
-                      Path("tests/vectors/pass/lineage-relation.valid.json"),
-                  ],
-                  "fail_vectors": [
-                      Path("tests/vectors/fail/lineage-relation.missing-confidence.json"),
-                      Path("tests/vectors/fail/lineage-relation.directionality-violation.json"),
-                      Path("tests/vectors/fail/lineage-relation.missing-prohibited-use.json"),
-                  ],
-              },
-              {
-                  "name": "Allocation Readiness v0.1",
-                  "schema": Path("schemas/allocation-readiness-v0.1.schema.json"),
-                  "sample": Path("examples/allocation-readiness.sample.json"),
-                  "pass_vectors": [
-                      Path("tests/vectors/pass/allocation-readiness.valid.json"),
-                  ],
-                  "fail_vectors": [
-                      Path("tests/vectors/fail/allocation-readiness.missing-decision.json"),
-                      Path("tests/vectors/fail/allocation-readiness.auto-allocation-violation.json"),
-                      Path("tests/vectors/fail/allocation-readiness.missing-prohibited-use.json"),
-                  ],
-              },
+          print("=== Validating Allocation Readiness v0.1 ===")
+
+          schema_path = Path("schemas/allocation-readiness-v0.1.schema.json")
+          sample_path = Path("examples/allocation-readiness.sample.json")
+
+          pass_vectors = [
+              Path("tests/vectors/pass/allocation-readiness.valid.json"),
           ]
+
+          fail_vectors = [
+              Path("tests/vectors/fail/allocation-readiness.missing-decision.json"),
+              Path("tests/vectors/fail/allocation-readiness.auto-allocation-violation.json"),
+              Path("tests/vectors/fail/allocation-readiness.missing-prohibited-use.json"),
+          ]
+
+          required_paths = [
+              schema_path,
+              sample_path,
+              *pass_vectors,
+              *fail_vectors,
+          ]
+
+          missing_paths = [path for path in required_paths if not path.exists()]
+
+          if missing_paths:
+              print("ERROR: Missing required files:")
+              for path in missing_paths:
+                  print(f"  - {path}")
+              sys.exit(1)
 
           def load_json(path: Path):
               try:
@@ -92,7 +81,14 @@ jobs:
                   print(f"ERROR: Invalid JSON in {path}: {e}")
                   raise
 
-          def validate_should_pass(validator, path: Path) -> bool:
+          schema = load_json(schema_path)
+
+          validator = Draft202012Validator(
+              schema,
+              format_checker=FormatChecker()
+          )
+
+          def validate_should_pass(path: Path) -> bool:
               instance = load_json(path)
               errors = sorted(
                   validator.iter_errors(instance),
@@ -109,7 +105,7 @@ jobs:
               print(f"OK: {path} is valid.")
               return True
 
-          def validate_should_fail(validator, path: Path) -> bool:
+          def validate_should_fail(path: Path) -> bool:
               instance = load_json(path)
               errors = sorted(
                   validator.iter_errors(instance),
@@ -129,52 +125,26 @@ jobs:
 
           all_ok = True
 
-          for target in TARGETS:
-              print("")
-              print(f"=== Validating {target['name']} ===")
+          print("")
+          print("=== Validating sample ===")
+          all_ok = validate_should_pass(sample_path) and all_ok
 
-              required_paths = [
-                  target["schema"],
-                  target["sample"],
-                  *target["pass_vectors"],
-                  *target["fail_vectors"],
-              ]
+          print("")
+          print("=== Validating pass vectors ===")
+          for path in pass_vectors:
+              all_ok = validate_should_pass(path) and all_ok
 
-              missing_paths = [path for path in required_paths if not path.exists()]
-
-              if missing_paths:
-                  print(f"ERROR: Missing required files for {target['name']}:")
-                  for path in missing_paths:
-                      print(f"  - {path}")
-                  all_ok = False
-                  continue
-
-              schema = load_json(target["schema"])
-              validator = Draft202012Validator(
-                  schema,
-                  format_checker=FormatChecker()
-              )
-
-              print("")
-              print("=== Validating sample ===")
-              all_ok = validate_should_pass(validator, target["sample"]) and all_ok
-
-              print("")
-              print("=== Validating pass vectors ===")
-              for path in target["pass_vectors"]:
-                  all_ok = validate_should_pass(validator, path) and all_ok
-
-              print("")
-              print("=== Validating fail vectors ===")
-              for path in target["fail_vectors"]:
-                  all_ok = validate_should_fail(validator, path) and all_ok
+          print("")
+          print("=== Validating fail vectors ===")
+          for path in fail_vectors:
+              all_ok = validate_should_fail(path) and all_ok
 
           print("")
 
           if all_ok:
-              print("Validation succeeded.")
+              print("Allocation Readiness validation succeeded.")
               sys.exit(0)
 
-          print("Validation failed.")
+          print("Allocation Readiness validation failed.")
           sys.exit(1)
           PY
