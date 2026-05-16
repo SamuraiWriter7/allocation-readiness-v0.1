@@ -1,0 +1,180 @@
+name: Validate Specs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-specs:
+    name: Validate specifications and test vectors
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install jsonschema
+
+      - name: Debug file tree
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo ""
+          echo "=== Repository file tree ==="
+          find . -maxdepth 5 -type f | sort
+
+      - name: Validate implemented specs
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          from jsonschema import Draft202012Validator, FormatChecker
+
+          TARGETS = [
+              {
+                  "name": "Comparison Result v0.1",
+                  "schema": Path("schemas/comparison-result-v0.1.schema.json"),
+                  "sample": Path("examples/comparison-result.sample.json"),
+                  "pass_vectors": [
+                      Path("tests/vectors/pass/comparison-result.valid.json"),
+                  ],
+                  "fail_vectors": [
+                      Path("tests/vectors/fail/comparison-result.missing-confidence.json"),
+                      Path("tests/vectors/fail/comparison-result.auto-royalty-assignment-missing-prohibition.json"),
+                  ],
+              },
+              {
+                  "name": "Lineage Relation v0.1",
+                  "schema": Path("schemas/lineage-relation-v0.1.schema.json"),
+                  "sample": Path("examples/lineage-relation.sample.json"),
+                  "pass_vectors": [
+                      Path("tests/vectors/pass/lineage-relation.valid.json"),
+                  ],
+                  "fail_vectors": [
+                      Path("tests/vectors/fail/lineage-relation.missing-confidence.json"),
+                      Path("tests/vectors/fail/lineage-relation.directionality-violation.json"),
+                      Path("tests/vectors/fail/lineage-relation.missing-prohibited-use.json"),
+                  ],
+              },
+              {
+                  "name": "Allocation Readiness v0.1",
+                  "schema": Path("schemas/allocation-readiness-v0.1.schema.json"),
+                  "sample": Path("examples/allocation-readiness.sample.json"),
+                  "pass_vectors": [
+                      Path("tests/vectors/pass/allocation-readiness.valid.json"),
+                  ],
+                  "fail_vectors": [
+                      Path("tests/vectors/fail/allocation-readiness.missing-decision.json"),
+                      Path("tests/vectors/fail/allocation-readiness.auto-allocation-violation.json"),
+                      Path("tests/vectors/fail/allocation-readiness.missing-prohibited-use.json"),
+                  ],
+              },
+          ]
+
+          def load_json(path: Path):
+              try:
+                  with path.open("r", encoding="utf-8") as f:
+                      return json.load(f)
+              except json.JSONDecodeError as e:
+                  print(f"ERROR: Invalid JSON in {path}: {e}")
+                  raise
+
+          def validate_should_pass(validator, path: Path) -> bool:
+              instance = load_json(path)
+              errors = sorted(
+                  validator.iter_errors(instance),
+                  key=lambda e: list(e.path)
+              )
+
+              if errors:
+                  print(f"ERROR: Expected PASS but validation failed: {path}")
+                  for error in errors:
+                      location = ".".join(str(p) for p in error.path) or "<root>"
+                      print(f"  - {location}: {error.message}")
+                  return False
+
+              print(f"OK: {path} is valid.")
+              return True
+
+          def validate_should_fail(validator, path: Path) -> bool:
+              instance = load_json(path)
+              errors = sorted(
+                  validator.iter_errors(instance),
+                  key=lambda e: list(e.path)
+              )
+
+              if not errors:
+                  print(f"ERROR: Expected FAIL but validation passed: {path}")
+                  return False
+
+              print(f"OK: {path} failed as expected.")
+              for error in errors[:5]:
+                  location = ".".join(str(p) for p in error.path) or "<root>"
+                  print(f"  - {location}: {error.message}")
+
+              return True
+
+          all_ok = True
+
+          for target in TARGETS:
+              print("")
+              print(f"=== Validating {target['name']} ===")
+
+              required_paths = [
+                  target["schema"],
+                  target["sample"],
+                  *target["pass_vectors"],
+                  *target["fail_vectors"],
+              ]
+
+              missing_paths = [path for path in required_paths if not path.exists()]
+
+              if missing_paths:
+                  print(f"ERROR: Missing required files for {target['name']}:")
+                  for path in missing_paths:
+                      print(f"  - {path}")
+                  all_ok = False
+                  continue
+
+              schema = load_json(target["schema"])
+              validator = Draft202012Validator(
+                  schema,
+                  format_checker=FormatChecker()
+              )
+
+              print("")
+              print("=== Validating sample ===")
+              all_ok = validate_should_pass(validator, target["sample"]) and all_ok
+
+              print("")
+              print("=== Validating pass vectors ===")
+              for path in target["pass_vectors"]:
+                  all_ok = validate_should_pass(validator, path) and all_ok
+
+              print("")
+              print("=== Validating fail vectors ===")
+              for path in target["fail_vectors"]:
+                  all_ok = validate_should_fail(validator, path) and all_ok
+
+          print("")
+
+          if all_ok:
+              print("Validation succeeded.")
+              sys.exit(0)
+
+          print("Validation failed.")
+          sys.exit(1)
+          PY
