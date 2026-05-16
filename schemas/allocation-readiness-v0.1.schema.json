@@ -1,0 +1,751 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/SamuraiWriter7/Structure-Fingerprint-Evidence-Extensions-v0.1/main/schemas/allocation-readiness-v0.1.schema.json",
+  "title": "Allocation Readiness v0.1",
+  "description": "A minimal machine-readable object for assessing whether a comparison result or lineage relation is sufficiently documented to be passed into a downstream allocation review process. It does not assign royalties, determine ownership, execute payments, or make legal claims.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "inputs",
+    "evidence",
+    "readiness",
+    "gates",
+    "uncertainty",
+    "review",
+    "policy"
+  ],
+  "properties": {
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "inputs": {
+      "$ref": "#/$defs/inputs"
+    },
+    "evidence": {
+      "$ref": "#/$defs/evidence"
+    },
+    "readiness": {
+      "$ref": "#/$defs/readiness"
+    },
+    "gates": {
+      "$ref": "#/$defs/gates"
+    },
+    "uncertainty": {
+      "$ref": "#/$defs/uncertainty"
+    },
+    "review": {
+      "$ref": "#/$defs/review"
+    },
+    "policy": {
+      "$ref": "#/$defs/policy"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "readiness": {
+            "properties": {
+              "readiness_class": {
+                "enum": [
+                  "not_ready",
+                  "blocked_by_dispute",
+                  "blocked_by_uncertainty",
+                  "blocked_by_policy",
+                  "insufficient_evidence"
+                ]
+              }
+            },
+            "required": [
+              "readiness_class"
+            ]
+          }
+        },
+        "required": [
+          "readiness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "readiness": {
+            "properties": {
+              "allocation_review_allowed": {
+                "const": false
+              }
+            },
+            "required": [
+              "allocation_review_allowed"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "gates": {
+            "properties": {
+              "dispute_gate": {
+                "properties": {
+                  "status": {
+                    "const": "fail"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            },
+            "required": [
+              "dispute_gate"
+            ]
+          }
+        },
+        "required": [
+          "gates"
+        ]
+      },
+      "then": {
+        "properties": {
+          "readiness": {
+            "properties": {
+              "recommended_next_step": {
+                "enum": [
+                  "send_to_dispute_registry",
+                  "block_allocation_process"
+                ]
+              }
+            },
+            "required": [
+              "recommended_next_step"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "uncertainty": {
+            "properties": {
+              "ambiguity_level": {
+                "enum": [
+                  "high",
+                  "unresolved"
+                ]
+              }
+            },
+            "required": [
+              "ambiguity_level"
+            ]
+          }
+        },
+        "required": [
+          "uncertainty"
+        ]
+      },
+      "then": {
+        "properties": {
+          "review": {
+            "properties": {
+              "human_review_required": {
+                "const": true
+              }
+            },
+            "required": [
+              "human_review_required"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence": {
+            "properties": {
+              "evidence_status": {
+                "const": "insufficient"
+              }
+            },
+            "required": [
+              "evidence_status"
+            ]
+          }
+        },
+        "required": [
+          "evidence"
+        ]
+      },
+      "then": {
+        "properties": {
+          "readiness": {
+            "properties": {
+              "readiness_class": {
+                "enum": [
+                  "insufficient_evidence",
+                  "not_ready"
+                ]
+              }
+            },
+            "required": [
+              "readiness_class"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "uri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "non_empty_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "human",
+            "ai_agent",
+            "software_tool",
+            "hybrid_system",
+            "review_panel"
+          ]
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allocation_readiness_id",
+        "spec_version",
+        "created_at",
+        "producer"
+      ],
+      "properties": {
+        "allocation_readiness_id": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "spec_version": {
+          "const": "0.1.0"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "producer": {
+          "$ref": "#/$defs/producer"
+        }
+      }
+    },
+    "lineage_relation_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lineage_relation_id",
+        "uri"
+      ],
+      "properties": {
+        "lineage_relation_id": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "relation_type": {
+          "type": "string",
+          "enum": [
+            "derived_from",
+            "adapted_from",
+            "influenced_by",
+            "structurally_related",
+            "near_duplicate",
+            "shared_origin_possible",
+            "common_ancestor_possible",
+            "independent_convergence",
+            "conflicting_lineage_claim",
+            "insufficient_evidence",
+            "unrelated"
+          ]
+        },
+        "strength": {
+          "type": "string",
+          "enum": [
+            "strong",
+            "moderate",
+            "weak",
+            "disputed",
+            "inconclusive"
+          ]
+        }
+      }
+    },
+    "comparison_result_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "comparison_id",
+        "uri"
+      ],
+      "properties": {
+        "comparison_id": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "comparison_class": {
+          "type": "string",
+          "enum": [
+            "equivalent",
+            "near_equivalent",
+            "structurally_related",
+            "weakly_related",
+            "unrelated",
+            "conflicting",
+            "inconclusive"
+          ]
+        },
+        "overall_similarity": {
+          "$ref": "#/$defs/score"
+        }
+      }
+    },
+    "fingerprint_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fingerprint_id",
+        "uri"
+      ],
+      "properties": {
+        "fingerprint_id": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "possible_origin",
+            "possible_derivative",
+            "contributor_candidate",
+            "disputed_candidate",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lineage_relation_refs",
+        "comparison_result_refs"
+      ],
+      "properties": {
+        "lineage_relation_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/lineage_relation_ref"
+          }
+        },
+        "comparison_result_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/comparison_result_ref"
+          }
+        },
+        "fingerprint_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fingerprint_ref"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_status",
+        "sufficiency_score",
+        "evidence_summary"
+      ],
+      "properties": {
+        "evidence_status": {
+          "type": "string",
+          "enum": [
+            "sufficient_for_review",
+            "partially_sufficient",
+            "insufficient",
+            "conflicting",
+            "disputed",
+            "unavailable"
+          ]
+        },
+        "sufficiency_score": {
+          "$ref": "#/$defs/score"
+        },
+        "evidence_summary": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "supporting_evidence": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "proof_overlap",
+              "structural_similarity",
+              "lineage_relation",
+              "timestamp_ordering",
+              "provenance_chain",
+              "signed_attestation",
+              "citation_or_reference",
+              "human_review_note",
+              "dispute_resolution_record",
+              "external_registry_record"
+            ]
+          }
+        },
+        "missing_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflicting_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "readiness_class",
+        "readiness_score",
+        "allocation_review_allowed",
+        "automatic_allocation_allowed",
+        "recommended_next_step"
+      ],
+      "properties": {
+        "readiness_class": {
+          "type": "string",
+          "enum": [
+            "ready_for_allocation_review",
+            "conditionally_ready_for_allocation_review",
+            "not_ready",
+            "blocked_by_dispute",
+            "blocked_by_uncertainty",
+            "blocked_by_policy",
+            "insufficient_evidence"
+          ]
+        },
+        "readiness_score": {
+          "$ref": "#/$defs/score"
+        },
+        "allocation_review_allowed": {
+          "type": "boolean"
+        },
+        "automatic_allocation_allowed": {
+          "const": false
+        },
+        "readiness_summary": {
+          "type": "string"
+        },
+        "recommended_next_step": {
+          "type": "string",
+          "enum": [
+            "proceed_to_allocation_review",
+            "request_human_review",
+            "request_multi_wing_review",
+            "request_more_evidence",
+            "send_to_dispute_registry",
+            "block_allocation_process",
+            "archive_for_audit_only"
+          ]
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "warning",
+            "fail",
+            "not_applicable"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "dispute_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "dispute_status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "warning",
+            "fail",
+            "not_applicable"
+          ]
+        },
+        "dispute_status": {
+          "type": "string",
+          "enum": [
+            "no_known_dispute",
+            "dispute_open",
+            "dispute_resolved",
+            "dispute_unknown"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance_gate",
+        "lineage_gate",
+        "uncertainty_gate",
+        "dispute_gate",
+        "policy_gate"
+      ],
+      "properties": {
+        "provenance_gate": {
+          "$ref": "#/$defs/gate"
+        },
+        "lineage_gate": {
+          "$ref": "#/$defs/gate"
+        },
+        "uncertainty_gate": {
+          "$ref": "#/$defs/gate"
+        },
+        "dispute_gate": {
+          "$ref": "#/$defs/dispute_gate"
+        },
+        "policy_gate": {
+          "$ref": "#/$defs/gate"
+        }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confidence",
+        "ambiguity_level",
+        "inherited_uncertainty"
+      ],
+      "properties": {
+        "confidence": {
+          "$ref": "#/$defs/score"
+        },
+        "ambiguity_level": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "unresolved"
+          ]
+        },
+        "inherited_uncertainty": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unresolved_issues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "uncertainty_notes": {
+          "type": "string"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "human_review_required",
+        "review_reason",
+        "recommended_review_type"
+      ],
+      "properties": {
+        "human_review_required": {
+          "type": "boolean"
+        },
+        "review_reason": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "allocation_sensitive",
+              "authorship_sensitive",
+              "origin_sensitive",
+              "legal_sensitive",
+              "dispute_possible",
+              "high_similarity",
+              "directional_lineage_claim",
+              "insufficient_evidence",
+              "conflicting_evidence",
+              "policy_required"
+            ]
+          }
+        },
+        "recommended_review_type": {
+          "type": "string",
+          "enum": [
+            "none",
+            "technical_review",
+            "editorial_review",
+            "provenance_review",
+            "lineage_review",
+            "legal_review",
+            "allocation_review",
+            "multi_wing_review",
+            "dispute_review"
+          ]
+        },
+        "review_notes": {
+          "type": "string"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_downstream_uses",
+        "prohibited_downstream_uses"
+      ],
+      "properties": {
+        "allowed_downstream_uses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "allocation_review_input",
+              "dispute_input",
+              "audit_input",
+              "human_review_input",
+              "multi_wing_review_input",
+              "governance_review_input",
+              "research_input"
+            ]
+          }
+        },
+        "prohibited_downstream_uses": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "automatic_authorship_claim",
+              "automatic_origin_claim",
+              "automatic_plagiarism_claim",
+              "automatic_royalty_assignment",
+              "automatic_payment_execution",
+              "automatic_legal_claim",
+              "irreversible_enforcement"
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "const": "automatic_authorship_claim"
+              },
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "const": "automatic_origin_claim"
+              },
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "const": "automatic_plagiarism_claim"
+              },
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "const": "automatic_royalty_assignment"
+              },
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "const": "automatic_payment_execution"
+              },
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "const": "automatic_legal_claim"
+              },
+              "minContains": 1
+            }
+          ]
+        },
+        "policy_notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
